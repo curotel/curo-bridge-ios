@@ -45,3 +45,39 @@ public enum CuroDevice {
     case alpha
     case stethoscope
 }
+
+public enum CuroAlphaStatus: Int {
+    case noConfiguration = 0
+    case notConnected = 1
+    case connected = 2
+    case otoscopeOn = 3
+    case invalid = 4
+}
+
+public enum CuroAlphaCommand: String {
+    case resetDevice = "$HRST!"
+    case requestDeviceId = "$BLID!"
+    case requestIpAddress = "$IPAD!"
+    case requestSsid = "$SSID!"
+}
+
+extension CuroAlphaCommand {
+    func toData() -> Data {
+        self.rawValue.data(using: .utf8)!
+    }
+}
+
+public enum CuroAlphaProvisionStep: Int {
+    case idle
+    case requestedDeviceId
+    case receivedDeviceId
+    case requestedSsid
+    case receivedSsid
+    case searchDevice
+    case deviceConnected
+    case scanningWifi
+    case wifiScanned
+    case configuringWifi
+    case wifiConfigApplied
+    case wifiConfigured
+}

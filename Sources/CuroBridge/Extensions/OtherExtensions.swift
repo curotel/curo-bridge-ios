@@ -14,6 +14,10 @@ extension String {
         }
         return range.lowerBound == self.startIndex
     }
+    
+    func toData() -> Data {
+        self.data(using: .utf8)!
+    }
 }
 
 extension Double {
