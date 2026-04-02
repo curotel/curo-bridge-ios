@@ -1,13 +1,40 @@
 {
-  "originHash" : "c5b4dd82c38681e6f25f621a39cca61668f9cf320ad876ec256af72513205366",
+  "originHash" : "96252c3890bee577442ebbf18c601612435d23be59493df8bd6371524d263b79",
   "pins" : [
     {
       "identity" : "esp-idf-provisioning-ios",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/espressif/esp-idf-provisioning-ios.git",
       "state" : {
-        "revision" : "b38391a7ca16d846af1700c902c8e87b9c35c33d",
-        "version" : "2.1.2"
+        "revision" : "ff70c09ded605969e053ade44a6b8756b93c4e4c",
+        "version" : "3.0.3"
+      }
+    },
+    {
+      "identity" : "phonenumberkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/marmelroy/PhoneNumberKit",
+      "state" : {
+        "revision" : "54f678c2fb115e68bb173face494954c1de9df10",
+        "version" : "4.2.8"
+      }
+    },
+    {
+      "identity" : "stream-video-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/GetStream/stream-video-swift.git",
+      "state" : {
+        "revision" : "787436f257f6d5fe557d44bf2f4ba493d30abfae",
+        "version" : "1.45.0"
+      }
+    },
+    {
+      "identity" : "stream-video-swift-webrtc",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/GetStream/stream-video-swift-webrtc.git",
+      "state" : {
+        "revision" : "6d45af906f8c91d6bfd01c5f68b76f7d7c90eaa3",
+        "version" : "137.0.71"
       }
     },
     {
@@ -15,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-protobuf.git",
       "state" : {
-        "revision" : "d72aed98f8253ec1aa9ea1141e28150f408cf17f",
-        "version" : "1.29.0"
+        "revision" : "102a647b573f60f73afdce5613a51d71349fe507",
+        "version" : "1.30.0"
       }
     }
   ],

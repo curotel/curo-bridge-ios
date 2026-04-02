@@ -10,11 +10,8 @@ import CoreBluetooth
 import ESPProvision
 
 public class DeviceDiscovery: NSObject {
-    public var onPeripheralListUpdated: (([CBPeripheral]) -> Void)?
-    public var updateOtoscopeEspId: ((String) -> Void)?
-    public var onWiFiList: (([ESPWifiNetwork]) -> Void)?
-    public var onStepUpdate: ((CuroAlphaProvisionStep) -> Void)?
-    public var onError: ((String) -> Void)?
+    public var discoveryType: DiscoveryType?
+    weak public var delegate: DeviceDiscoveryDelegate?
     
     var centralManager: CBCentralManager?
     
@@ -22,17 +19,45 @@ public class DeviceDiscovery: NSObject {
     var allPeripherals: [CBPeripheral] = []
     var allWifiNetworks: [ESPWifiNetwork] = []
     
-    var alphaDevice: CBPeripheral?
-    var stethoscopeDevice: CBPeripheral?
-    
+    // device references
+    @Published public var alphaDevice: CBPeripheral?
+    @Published public var stethoscopeDevice: CBPeripheral?
     var alphaEspDevice: ESPDevice?
     
+    // alpha characteristics
     var alphaStatusCharacteristic: CBCharacteristic?
     var alphaModuleCharacteristic: CBCharacteristic?
     
-    // managers
-    var alphaStatusManager: AlphaStatusManager?
-    var alphaModuleManager: AlphaModuleManager?
+    // alpha managers
+    var alphaStatusManager = AlphaStatusManager()
+    var alphaModuleManager = AlphaModuleManager(delegate: nil)
+    
+    // alpha statuses
+    var alphaDeviceStatus: CuroAlphaStatus = .undefined
+    
+    
+    /// Invalidates pending SSID retries when incremented (disconnect or leaving connected state).
+    private var ssidRequestSessionID: Int = 0
+    /// Ensures `$BLID!` / ESP search runs at most once per Alpha BLE connection when status is `.noConfiguration`.
+    private var didBeginEspProvisioningFromNoConfiguration = false
+    private let ssidManager = SSIDManager()
+    
+    public func setDiscoveryType(_ discoveryType: DiscoveryType) {
+        self.discoveryType = discoveryType
+    }
+    
+    public func setModuleManagerDelegate(_ delegate: AlphaModuleManagerDelegate?) {
+        alphaModuleManager.delegate = delegate
+    }
+    
+    /// Delivers UI-model updates on the main queue (SwiftUI / `@Published` require main-thread updates).
+    private func dispatchToMain(_ work: @escaping () -> Void) {
+        if Thread.isMainThread {
+            work()
+        } else {
+            DispatchQueue.main.async(execute: work)
+        }
+    }
     
     public func startDeviceDiscovery(_ devices: [CuroDevice]?) {
         let deviceTypes = devices ?? [CuroDevice.alpha, CuroDevice.stethoscope]
@@ -48,13 +73,63 @@ public class DeviceDiscovery: NSObject {
             servicesToScan.append(CuroUUIDs.stethoscopeService)
         }
         self.centralManager = CBCentralManager(delegate: self, queue: .main)
+        
+        self.alphaStatusManager.onDeviceStatus = { [weak self] status in
+            self?.alphaDeviceStatus = status
+            
+            guard let self else { return }
+            switch status {
+            case .noConfiguration:
+                if self.alphaDeviceStatus == .connected {
+                    self.invalidateSsidRequestSchedule()
+                }
+                guard !self.didBeginEspProvisioningFromNoConfiguration else { break }
+                self.didBeginEspProvisioningFromNoConfiguration = true
+                self.runStatusCommand(.requestDeviceId)
+            case .notConnected:
+                // TODO
+                print("The device is connected to a WiFI but is not in range.")
+            case .connected:
+                if self.alphaDeviceStatus != .connected {
+                    self.requestAlphaSSID()
+                }
+                if self.discoveryType == .local {
+                    delegate?.onStatus(.deviceConnected)
+                }
+            case .otoscopeOn:
+                // TODO
+                print("Otoscope is running")
+            default:
+                if self.alphaDeviceStatus == .connected {
+                    self.invalidateSsidRequestSchedule()
+                }
+                print("Alpha status:", status)
+            }
+        }
+        
+        self.alphaStatusManager.onSsidReceived = { [weak self] ssid in
+            guard let self else { return }
+            if self.ssidManager.checkIfProvisioningNeeded(ssid) {
+                self.runStatusCommand(.resetDevice)
+            }
+        }
+        
+        self.alphaStatusManager.onCameraIdReceived = { [weak self] cameraId in
+            guard let self else { return }
+            self.connectEspDevice(cameraId)
+        }
     }
     
     public func connectDevice(_ peripheral: CBPeripheral) {
+        alphaDeviceStatus = .undefined
+        didBeginEspProvisioningFromNoConfiguration = false
         self.centralManager?.connect(peripheral)
     }
     
     public func disconnectDevice(_ peripheral: CBPeripheral) {
+        invalidateSsidRequestSchedule()
+        alphaDeviceStatus = .undefined
+        didBeginEspProvisioningFromNoConfiguration = false
         self.centralManager?.cancelPeripheralConnection(peripheral)
     }
     
@@ -74,26 +149,46 @@ extension DeviceDiscovery {
 }
 
 extension DeviceDiscovery {
-    public func runStatusCommand(_ command: CuroAlphaCommand) {
-        writeToStatusCharacteristics(command.toData())
+    
+    private func requestAlphaSSID() {
+        ssidRequestSessionID &+= 1
+        let session = ssidRequestSessionID
+        let send: () -> Void = { [weak self] in
+            guard let self, session == self.ssidRequestSessionID else { return }
+            self.runStatusCommand(.requestSsid)
+        }
+        DispatchQueue.main.async(execute: send)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: send)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: send)
+    }
+    
+    private func invalidateSsidRequestSchedule() {
+        ssidRequestSessionID &+= 1
+    }
+    
+    public func runStatusCommand(_ command: CuroAlphaStatusCommand) {
+        self.writeToStatusCharacteristics(command.toData())
     }
     
     public func connectEspDevice(_ deviceId: String) {
-        let deviceName = "AVO-\(deviceId)"
-        self.onStepUpdate?(.searchDevice)
+        let deviceName = "\(curoEspPrefix)\(deviceId)"
+        print("Connecting to ", deviceName)
+        dispatchToMain { self.delegate?.onStepUpdate(.searchDevice) }
         ESPProvisionManager.shared.searchESPDevices(devicePrefix: deviceName, transport: .ble, security: .secure) { deviceList, espError in
-            if let error = espError {
-                switch error {
-                case .espDeviceNotFound:
-                    self.onError?("Couldn't locate device.")
-                default:
-                    self.onError?("Error connecting to device.")
-                }
-            } else {
-                if let espDevices = deviceList {
-                    for espDevice in espDevices {
-                        if espDevice.name == deviceName {
-                            self.connectToAlpha(espDevice)
+            self.dispatchToMain {
+                if let error = espError {
+                    switch error {
+                    case .espDeviceNotFound:
+                        self.delegate?.onError("Couldn't locate device.")
+                    default:
+                        self.delegate?.onError("Error connecting to device.")
+                    }
+                } else {
+                    if let espDevices = deviceList {
+                        for espDevice in espDevices {
+                            if espDevice.name == deviceName {
+                                self.connectToAlpha(espDevice)
+                            }
                         }
                     }
                 }
@@ -102,66 +197,73 @@ extension DeviceDiscovery {
     }
     
     func connectToAlpha(_ espDevice: ESPDevice) {
+        print("connectToAlpha", espDevice)
         espDevice.connect(delegate: self) { sessionStatus in
-            switch sessionStatus {
-            case .connected:
-                self.onStepUpdate?(.deviceConnected)
-                self.alphaEspDevice = espDevice
-                self.scanAlphaWifiList()
-            case .disconnected:
-                self.onError?("Couldn't persist device connection")
-            case .failedToConnect(let error):
-                self.onError?("Error connecting to device: \(error.localizedDescription)")
+            self.dispatchToMain {
+                switch sessionStatus {
+                case .connected:
+                    self.delegate?.onStepUpdate(.deviceConnected)
+                    self.alphaEspDevice = espDevice
+                    self.scanAlphaWifiList()
+                case .disconnected:
+                    self.delegate?.onError("Couldn't persist device connection")
+                case .failedToConnect(let error):
+                    self.delegate?.onError("Error connecting to device: \(error.localizedDescription)")
+                }
             }
         }
     }
     
     func scanAlphaWifiList() {
-        self.onStepUpdate?(.scanningWifi)
+        dispatchToMain { self.delegate?.onStepUpdate(.scanningWifi) }
         self.alphaEspDevice?.scanWifiList { espWifiNetworks, wifiScanError in
-            if let error = wifiScanError {
-                switch error {
-                case .emptyResultCount:
-                    self.onError?("No WiFi networks found")
-                case .emptyConfigData:
-                    self.onError?("No WiFi networks found")
-                case .scanRequestError(let error):
-                    self.onError?("Error scanning WiFi: \(error.localizedDescription)")
+            self.dispatchToMain {
+                if let error = wifiScanError {
+                    switch error {
+                    case .emptyResultCount:
+                        self.delegate?.onError("No WiFi networks found")
+                    case .emptyConfigData:
+                        self.delegate?.onError("No WiFi networks found")
+                    case .scanRequestError(let error):
+                        self.delegate?.onError("Error scanning WiFi: \(error.localizedDescription)")
+                    }
+                } else if let espWifiNetworks = espWifiNetworks {
+                    self.delegate?.onWiFiList(espWifiNetworks)
+                    self.delegate?.onStepUpdate(.wifiScanned)
+                    self.allWifiNetworks = espWifiNetworks
                 }
-            } else if let espWifiNetworks = espWifiNetworks {
-                self.onStepUpdate?(.wifiScanned)
-                self.allWifiNetworks = espWifiNetworks
-                self.onWiFiList?(espWifiNetworks)
             }
         }
     }
     
     public func provisionDevice(ssid: String, password: String = "") {
-        self.onStepUpdate?(.configuringWifi)
+        dispatchToMain { self.delegate?.onStepUpdate(.configuringWifi) }
         self.alphaEspDevice?.provision(ssid: ssid, passPhrase: password) { provisionStatus in
-            switch provisionStatus {
-            case .configApplied:
-                self.onStepUpdate?(.wifiConfigApplied)
-            case .success:
-                self.onStepUpdate?(.wifiConfigured)
-            case .failure(let espProvisionError):
-                switch espProvisionError {
-                case .sessionError:
-                    self.onError?("Please retry connecting to WiFi network")
-                case .configurationError(let error):
-                    self.onError?("Failed to apply WiFi configuration: \(error.localizedDescription)")
-                case .wifiStatusError(let error):
-                    self.onError?("Failed to fetch the WiFi status of the device: \(error.localizedDescription)")
-                case .wifiStatusDisconnected:
-                    self.onError?("Unable to apply Wi-Fi settings")
-                case .wifiStatusAuthenticationError:
-                    self.onError?("WiFi credentials are incorrect")
-                case .wifiStatusNetworkNotFound:
-                    self.onError?("WiFi network not found")
-                case .wifiStatusUnknownError:
-                    self.onError?("Failed to get WiFi status of device")
-                case .unknownError:
-                    self.onError?("Unknown error")
+            self.dispatchToMain {
+                switch provisionStatus {
+                case .configApplied:
+                    self.delegate?.onStepUpdate(.wifiConfigApplied)
+                case .success:
+                    self.delegate?.onStepUpdate(.wifiConfigured)
+                case .failure(let espProvisionError):
+                    switch espProvisionError {
+                    case .sessionError:
+                        self.delegate?.onError("Please retry connecting to WiFi network")
+                    case .configurationError(let error):
+                        self.delegate?.onError("Failed to apply WiFi configuration: \(error.localizedDescription)")
+                    case .wifiStatusError(let error):
+                        self.delegate?.onError("Failed to fetch the WiFi status of the device: \(error.localizedDescription)")
+                    case .wifiStatusDisconnected:
+                        self.delegate?.onError("Unable to apply Wi-Fi settings")
+                    case .wifiStatusAuthenticationError:
+                        self.delegate?.onError("WiFi credentials are incorrect")
+                    case .wifiStatusNetworkNotFound:
+                        self.delegate?.onError("WiFi network not found")
+                    case .wifiStatusUnknownError:
+                        self.delegate?.onError("Failed to get WiFi status of device")
+                    default:
+                        self.delegate?.onError("Unknown error")
+                    }
                 }
             }
         }
@@ -183,9 +285,11 @@ extension DeviceDiscovery: CBCentralManagerDelegate {
     }
     
     public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
-        if !allPeripherals.contains(where: { $0.identifier == peripheral.identifier }) {
-            self.allPeripherals.append(peripheral)
-            self.onPeripheralListUpdated?(self.allPeripherals)
+        dispatchToMain {
+            if !self.allPeripherals.contains(where: { $0.identifier == peripheral.identifier }) {
+                self.allPeripherals.append(peripheral)
+                self.delegate?.onPeripheralListUpdated(self.allPeripherals)
+            }
         }
     }
     
@@ -193,6 +297,21 @@ extension DeviceDiscovery: CBCentralManagerDelegate {
         print("Connected to device: \(peripheral.name ?? "Unknown device")")
         peripheral.delegate = self
         peripheral.discoverServices(servicesToScan)
+    }
+    
+    public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
+        invalidateSsidRequestSchedule()
+        alphaDeviceStatus = .undefined
+        didBeginEspProvisioningFromNoConfiguration = false
+        if peripheral == alphaDevice {
+            alphaStatusCharacteristic = nil
+            alphaModuleCharacteristic = nil
+            alphaDevice = nil
+            delegate?.onPeripheralUpdate(peripheral, update: .alphaDisconnected)
+        } else if peripheral == stethoscopeDevice {
+            stethoscopeDevice = nil
+            delegate?.onPeripheralUpdate(peripheral, update: .stethoscopeDisconnected)
+        }
     }
 }
 
@@ -207,8 +326,10 @@ extension DeviceDiscovery: CBPeripheralDelegate {
         for service in services {
             if service.uuid == CuroUUIDs.alphaService {
                 alphaDevice = peripheral
+                delegate?.onPeripheralUpdate(peripheral, update: .alphaConnected)
             } else if service.uuid == CuroUUIDs.stethoscopeService {
                 stethoscopeDevice = peripheral
+                delegate?.onPeripheralUpdate(peripheral, update: .stethoscopeConnected)
             }
             peripheral.discoverCharacteristics(nil, for: service)
         }
@@ -258,9 +379,9 @@ extension DeviceDiscovery {
             print("Characteristic \(characteristic.uuid.uuidString) value: \(String(decoding: value, as: UTF8.self)) hex: \(value.toHexString())")
             switch characteristic.uuid {
             case CuroUUIDs.alphaStatusCharacteristic:
-                alphaStatusManager?.processPayload(value)
+                alphaStatusManager.processPayload(value)
             case CuroUUIDs.alphaModuleCharacteristic:
-                alphaModuleManager?.processPayload(value)
+                alphaModuleManager.processPayload(value)
             default:
                 print("Unhandled characteristics: \(characteristic.uuid.uuidString)")
             }
@@ -289,9 +410,17 @@ extension DeviceDiscovery {
     }
     
     private func writeToAlpha(data: Data, characteristic: CBCharacteristic) {
-        if let alphaDevice = self.alphaDevice {
-            print("Writing to ALPHA: \(characteristic.uuid.uuidString)")
+        guard let alphaDevice = self.alphaDevice else { return }
+        let props = characteristic.properties
+        let payloadDescription = String(decoding: data, as: UTF8.self)
+        if props.contains(.write) {
+            print("Writing to ALPHA (with response): \(characteristic.uuid.uuidString) \(payloadDescription)")
             alphaDevice.writeValue(data, for: characteristic, type: .withResponse)
+        } else if props.contains(.writeWithoutResponse) {
+            print("Writing to ALPHA (without response): \(characteristic.uuid.uuidString) \(payloadDescription)")
+            alphaDevice.writeValue(data, for: characteristic, type: .withoutResponse)
+        } else {
+            print("Characteristic \(characteristic.uuid.uuidString) does not support write; cannot send: \(payloadDescription)")
         }
     }
 }
@@ -303,5 +432,11 @@ extension DeviceDiscovery: ESPDeviceConnectionDelegate {
     
     public func getUsername(forDevice: ESPDevice, completionHandler: @escaping (String?) -> Void) {
         completionHandler("puroindia")
+    }
+}
+
+extension DeviceDiscovery {
+    public func runAlphaModuleCommands(_ command: CuroAlphaModuleCommand) {
+        self.writeToModuleCharacteristics(command.toData())
     }
 }

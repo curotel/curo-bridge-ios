@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "CuroBridge",
     platforms: [
-        .iOS(.v14)
+        .iOS(.v17)
     ],
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
@@ -16,7 +16,9 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/espressif/esp-idf-provisioning-ios.git", from: "2.1.1")
+        .package(url: "https://github.com/espressif/esp-idf-provisioning-ios.git", from: "3.0.3"),
+        .package(url: "https://github.com/GetStream/stream-video-swift.git", from: "1.45.0"),
+        .package(url: "https://github.com/marmelroy/PhoneNumberKit", from: "4.2.8")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -24,7 +26,11 @@ let package = Package(
         .target(
             name: "CuroBridge",
             dependencies: [
-                .product(name: "ESPProvision", package: "esp-idf-provisioning-ios")
+                .product(name: "ESPProvision", package: "esp-idf-provisioning-ios"),
+                .product(name: "StreamVideo", package: "stream-video-swift"),
+                .product(name: "StreamVideoSwiftUI", package: "stream-video-swift"),
+                .product(name: "PhoneNumberKit", package: "PhoneNumberKit")
+                
             ]
         ),
     ]

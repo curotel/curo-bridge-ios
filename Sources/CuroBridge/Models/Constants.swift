@@ -6,6 +6,7 @@
 //
 
 import CoreBluetooth
+import ESPProvision
 
 enum CuroUUIDs {
     // alpha settings
@@ -47,6 +48,7 @@ public enum CuroDevice {
 }
 
 public enum CuroAlphaStatus: Int {
+    case undefined = -1
     case noConfiguration = 0
     case notConnected = 1
     case connected = 2
@@ -54,20 +56,38 @@ public enum CuroAlphaStatus: Int {
     case invalid = 4
 }
 
-public enum CuroAlphaCommand: String {
+public enum CuroAlphaStatusCommand: String {
     case resetDevice = "$HRST!"
     case requestDeviceId = "$BLID!"
     case requestIpAddress = "$IPAD!"
     case requestSsid = "$SSID!"
 }
 
-extension CuroAlphaCommand {
+extension CuroAlphaStatusCommand {
     func toData() -> Data {
         self.rawValue.data(using: .utf8)!
     }
 }
 
-public enum CuroAlphaProvisionStep: Int {
+public enum CuroAlphaModuleCommand: String {
+    case deviceHealth = "$P1!"
+    
+    case readTemperature = "$T1!"
+    
+    case oximeterOff = "$S0!"
+    case oximeterOn = "$S1!"
+    
+    case otoscopeOff = "$V0!"
+    case otoscopeOn = "$V1!"
+}
+
+extension CuroAlphaModuleCommand {
+    func toData() -> Data {
+        self.rawValue.data(using: .utf8)!
+    }
+}
+
+public enum CuroAlphaProvisionStep {
     case idle
     case requestedDeviceId
     case receivedDeviceId
@@ -80,4 +100,24 @@ public enum CuroAlphaProvisionStep: Int {
     case configuringWifi
     case wifiConfigApplied
     case wifiConfigured
+}
+
+public let curoEspPrefix: String = "AVO-"
+
+public enum DiscoveryType {
+    case setup
+    case local
+    case remote
+}
+
+public enum CuroBridgeStatus {
+    case idle
+    case deviceConnected
+}
+
+public enum PeripheralUpdate {
+    case alphaConnected
+    case stethoscopeConnected
+    case alphaDisconnected
+    case stethoscopeDisconnected
 }
