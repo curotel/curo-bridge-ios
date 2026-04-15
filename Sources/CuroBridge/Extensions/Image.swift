@@ -8,11 +8,11 @@
 import SwiftUI
 
 public extension Image {
-    init(_ asset: IconAsset) {
-        self.init(asset.rawValue)
+    public init(_ asset: IconAsset) {
+        self.init(asset.rawValue, bundle: .module)
     }
     
-    init(_ asset: ImageAsset) {
-        self.init(asset.rawValue)
+    public init(_ asset: ImageAsset) {
+        self.init(asset.rawValue, bundle: .module)
     }
 }

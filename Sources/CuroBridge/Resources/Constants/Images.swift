@@ -26,6 +26,6 @@ public enum ImageAsset: String, CaseIterable {
 
 public extension ImageAsset {
     var image: Image {
-        Image(self.rawValue)
+        Image(self.rawValue, bundle: .module)
     }
 }

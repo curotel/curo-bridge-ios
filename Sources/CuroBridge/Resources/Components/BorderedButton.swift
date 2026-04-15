@@ -69,6 +69,7 @@ public struct BorderedButton: View {
                         ? ThemeColor.white.color
                         : textColor
                     )
+                    .multilineTextAlignment(.center)
             }
             .frame(maxWidth: width)
             .padding(.vertical, 12)

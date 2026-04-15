@@ -28,6 +28,6 @@ public enum ThemeColor: String, CaseIterable {
 
 public extension ThemeColor {
     var color: Color {
-        Color(self.rawValue)
+        Color(self.rawValue, bundle: .module)
     }
 }

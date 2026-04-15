@@ -32,6 +32,10 @@ public final class APIClient {
             return try await handleResponse(data: data, response: response)
             
         } catch {
+            if let networkError = error as? NetworkError,
+               case .serverMessage(let string) = networkError {
+                print("Server error: ", string)
+            }
             
             // Handle 401 → try refresh
             if let networkError = error as? NetworkError,
@@ -130,12 +134,15 @@ public final class APIClient {
             throw NetworkError.unauthorized
             
         default:
-            do {
-                let errorResponse = try decoder.decode(APIErrorResponse.self, from: data)
+            if let errorResponse = try? decoder.decode(APIErrorResponse.self, from: data) {
                 throw NetworkError.serverMessage(errorResponse.message)
-            } catch {
-                throw NetworkError.serverError(http.statusCode)
             }
+            
+            // Fallback: raw response
+            let rawMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+            print("Unhandled error response:", rawMessage)
+            
+            throw NetworkError.serverError(http.statusCode)
         }
     }
 }

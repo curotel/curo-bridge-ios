@@ -27,7 +27,7 @@ public final class VideoSDKManager: ObservableObject {
     
     public func getStreamVideoClient() throws -> StreamVideo {
         guard let streamVideoClient = streamVideoClient else { throw NSError(domain: "No stream video client", code: 0, userInfo: nil) }
-
+        
         return streamVideoClient
     }
     
@@ -38,9 +38,8 @@ public final class VideoSDKManager: ObservableObject {
         }
         return callViewModel!
     }
-
+    
     public func setupGetstreamVideoClient(curoUser: CuroUser) async {
-//        guard let curoUser = Router.appState.currentUser else { return }
         guard let streamToken = await TokenStore.shared.getStreamToken() else { return }
         
         let newVideoClient = StreamVideo(
@@ -52,8 +51,8 @@ public final class VideoSDKManager: ObservableObject {
             ),
             token: .init(stringLiteral: streamToken),
             pushNotificationsConfig: PushNotificationsConfig(
-                pushProviderInfo: PushProviderInfo(name: "apn", pushProvider: .apn),
-                voipPushProviderInfo: PushProviderInfo(name: "voip", pushProvider: .apn)
+                pushProviderInfo: PushProviderInfo(name: "curotel-patients", pushProvider: .apn),
+                voipPushProviderInfo: PushProviderInfo(name: "curotel-patients", pushProvider: .apn)
             ),
             tokenProvider: { [weak self] result in
                 Task {
@@ -101,3 +100,20 @@ public final class VideoSDKManager: ObservableObject {
         }
     }
 }
+
+//public extension VideoSDKManager {
+//    public func setDeviceTokens(push: String, voip: String) async throws {
+//        try await streamVideoClient?.setDevice(id: push)
+//        try await streamVideoClient?.setVoipDevice(id: voip)
+//    }
+//    
+//    public func setVideoTokenRequest(device: String, voip: String) async {
+//        do {
+//            let _ = try await APIClient.shared.send(
+//                SetDeviceTokenRequest(request: SetDeviceTokenRequestBody(voipToken: voip, provider: "apn", providerName: "curotel-patients"))
+//            )
+//        } catch {
+//            print("setVideoTokenRequest error:", error)
+//        }
+//    }
+//}

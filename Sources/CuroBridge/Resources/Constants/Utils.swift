@@ -19,3 +19,11 @@ public func getWidthByPercent(percent: CGFloat) -> CGFloat {
 public func getHeightByPercent(percent: CGFloat) -> CGFloat {
     return UIScreen.main.bounds.height * percent
 }
+
+private func deliverToMain(_ work: @escaping () -> Void) {
+    if Thread.isMainThread {
+        work()
+    } else {
+        DispatchQueue.main.async(execute: work)
+    }
+}

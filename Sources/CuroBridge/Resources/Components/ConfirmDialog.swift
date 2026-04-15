@@ -28,7 +28,7 @@ public struct ConfirmDialog: View {
                 .ignoresSafeArea()
             
             VStack {
-                Image(ImageAsset.fullLogoAlternate)
+                ImageAsset.fullLogoAlternate.image
                     .resizable()
                     .scaledToFit()
                     .frame(width: getWidthByPercent(percent: 0.4))
@@ -43,7 +43,7 @@ public struct ConfirmDialog: View {
                 Spacer()
                     .frame(height: getHeightByPercent(percent: 0.1))
                 
-                HStack(spacing: 20) {
+                HStack(spacing: 16) {
                     BorderedButton(
                         title: negativeText,
                         background: .blue,
@@ -64,8 +64,8 @@ public struct ConfirmDialog: View {
                         successClicked()
                     }
                 }
-                .frame(width: getWidthByPercent(percent: 0.8))
             }
+            .frame(width: maxWidth)
         }
     }
 }
@@ -76,5 +76,4 @@ public struct ConfirmDialog: View {
     } failureClicked: {
         
     }
-
 }

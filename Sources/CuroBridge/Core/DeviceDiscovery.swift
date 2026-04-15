@@ -30,7 +30,7 @@ public class DeviceDiscovery: NSObject {
     
     // alpha managers
     var alphaStatusManager = AlphaStatusManager()
-    var alphaModuleManager = AlphaModuleManager(delegate: nil)
+    var alphaModuleManager = AlphaModuleManager()
     
     // alpha statuses
     var alphaDeviceStatus: CuroAlphaStatus = .undefined
@@ -40,10 +40,13 @@ public class DeviceDiscovery: NSObject {
     private var ssidRequestSessionID: Int = 0
     /// Ensures `$BLID!` / ESP search runs at most once per Alpha BLE connection when status is `.noConfiguration`.
     private var didBeginEspProvisioningFromNoConfiguration = false
-    private let ssidManager = SSIDManager()
     
     public func setDiscoveryType(_ discoveryType: DiscoveryType) {
         self.discoveryType = discoveryType
+    }
+    
+    public func setStatusManagerDelegate(_ delegate: AlphaStatusManagerDelegate?) {
+        alphaStatusManager.delegate = delegate
     }
     
     public func setModuleManagerDelegate(_ delegate: AlphaModuleManagerDelegate?) {
@@ -74,55 +77,57 @@ public class DeviceDiscovery: NSObject {
         }
         self.centralManager = CBCentralManager(delegate: self, queue: .main)
         
-        self.alphaStatusManager.onDeviceStatus = { [weak self] status in
-            self?.alphaDeviceStatus = status
-            
-            guard let self else { return }
-            switch status {
-            case .noConfiguration:
-                if self.alphaDeviceStatus == .connected {
-                    self.invalidateSsidRequestSchedule()
-                }
-                guard !self.didBeginEspProvisioningFromNoConfiguration else { break }
-                self.didBeginEspProvisioningFromNoConfiguration = true
-                self.runStatusCommand(.requestDeviceId)
-            case .notConnected:
-                // TODO
-                print("The device is connected to a WiFI but is not in range.")
-            case .connected:
-                if self.alphaDeviceStatus != .connected {
-                    self.requestAlphaSSID()
-                }
-                if self.discoveryType == .local {
-                    delegate?.onStatus(.deviceConnected)
-                }
-            case .otoscopeOn:
-                // TODO
-                print("Otoscope is running")
-            default:
-                if self.alphaDeviceStatus == .connected {
-                    self.invalidateSsidRequestSchedule()
-                }
-                print("Alpha status:", status)
-            }
-        }
-        
-        self.alphaStatusManager.onSsidReceived = { [weak self] ssid in
-            guard let self else { return }
-            if self.ssidManager.checkIfProvisioningNeeded(ssid) {
-                self.runStatusCommand(.resetDevice)
-            }
-        }
-        
-        self.alphaStatusManager.onCameraIdReceived = { [weak self] cameraId in
-            guard let self else { return }
-            self.connectEspDevice(cameraId)
-        }
+//        self.alphaStatusManager.onDeviceStatus = { [weak self] status in
+//            self?.alphaDeviceStatus = status
+//            
+//            guard let self else { return }
+//            switch status {
+//            case .noConfiguration:
+//                if self.alphaDeviceStatus == .connected {
+//                    self.invalidateSsidRequestSchedule()
+//                }
+//                guard !self.didBeginEspProvisioningFromNoConfiguration else { break }
+//                self.didBeginEspProvisioningFromNoConfiguration = true
+//                self.runStatusCommand(.requestDeviceId)
+//            case .notConnected:
+//                // TODO
+//                print("The device is connected to a WiFI but is not in range.")
+//            case .connected:
+//                if self.alphaDeviceStatus != .connected {
+//                    self.requestAlphaSSID()
+//                }
+//                if self.discoveryType == .local {
+//                    delegate?.onStatus(.deviceConnected)
+//                }
+//            case .otoscopeOn:
+//                // TODO
+//                print("Otoscope is running")
+//            default:
+//                if self.alphaDeviceStatus == .connected {
+//                    self.invalidateSsidRequestSchedule()
+//                }
+//                print("Alpha status:", status)
+//            }
+//        }
+//        
+//        self.alphaStatusManager.onSsidReceived = { [weak self] ssid in
+//            guard let self else { return }
+//            if self.ssidManager.checkIfProvisioningNeeded(ssid) {
+//                self.runStatusCommand(.resetDevice)
+//            }
+//        }
+//        
+//        self.alphaStatusManager.onCameraIdReceived = { [weak self] cameraId in
+//            guard let self else { return }
+//            self.connectEspDevice(cameraId)
+//        }
     }
     
     public func connectDevice(_ peripheral: CBPeripheral) {
         alphaDeviceStatus = .undefined
-        didBeginEspProvisioningFromNoConfiguration = false
+        if discoveryType == .setup {
+            didBeginEspProvisioningFromNoConfiguration = false
+        }
         self.centralManager?.connect(peripheral)
     }
     
@@ -155,7 +160,7 @@ extension DeviceDiscovery {
         let session = ssidRequestSessionID
         let send: () -> Void = { [weak self] in
             guard let self, session == self.ssidRequestSessionID else { return }
-            self.runStatusCommand(.requestSsid)
+            self.runAlphaStatusCommand(.getSSID)
         }
         DispatchQueue.main.async(execute: send)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: send)
@@ -166,7 +171,7 @@ extension DeviceDiscovery {
         ssidRequestSessionID &+= 1
     }
     
-    public func runStatusCommand(_ command: CuroAlphaStatusCommand) {
+    public func runAlphaStatusCommand(_ command: AlphaCommand) {
         self.writeToStatusCharacteristics(command.toData())
     }
     
@@ -215,6 +220,7 @@ extension DeviceDiscovery {
     }
     
     func scanAlphaWifiList() {
+        print("scanAlphaWifiList")
         dispatchToMain { self.delegate?.onStepUpdate(.scanningWifi) }
         self.alphaEspDevice?.scanWifiList { espWifiNetworks, wifiScanError in
             self.dispatchToMain {
@@ -427,16 +433,18 @@ extension DeviceDiscovery {
 
 extension DeviceDiscovery: ESPDeviceConnectionDelegate {
     public func getProofOfPossesion(forDevice: ESPDevice, completionHandler: @escaping (String) -> Void) {
-        completionHandler("abcd1234")
+        if let espDeviceId = self.alphaStatusManager.espDeviceId, espDeviceId.count > 6 {
+            completionHandler("P\(String(espDeviceId.suffix(6)))")
+        }
     }
     
     public func getUsername(forDevice: ESPDevice, completionHandler: @escaping (String?) -> Void) {
-        completionHandler("puroindia")
+        completionHandler("curotel")
     }
 }
 
 extension DeviceDiscovery {
-    public func runAlphaModuleCommands(_ command: CuroAlphaModuleCommand) {
+    public func runAlphaModuleCommands(_ command: AlphaCommand) {
         self.writeToModuleCharacteristics(command.toData())
     }
 }

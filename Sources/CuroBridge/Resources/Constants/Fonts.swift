@@ -5,7 +5,8 @@
 //  Created by Magnus Fernandes on 31/03/26.
 //
 
-import Foundation
+import SwiftUI
+import CoreText
 
 public enum AppFont: String {
     case light = "Manrope-Light"

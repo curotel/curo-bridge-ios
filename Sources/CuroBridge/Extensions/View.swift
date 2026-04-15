@@ -16,4 +16,20 @@ public extension View {
             for: nil
         )
     }
+    
+    public func appColor(_ color: ThemeColor) -> some View {
+        self.modifier(AppViewColorModifier(color: color.color))
+    }
+}
+
+private struct AppViewColorModifier: ViewModifier {
+    let color: Color
+    
+    func body(content: Content) -> some View {
+        if #available(iOS 17.0, *) {
+            content.foregroundStyle(color)
+        } else {
+            content.foregroundColor(color)
+        }
+    }
 }

@@ -8,9 +8,9 @@
 import CoreBluetooth
 import ESPProvision
 
-enum CuroUUIDs {
+public enum CuroUUIDs {
     // alpha settings
-    static var alphaService: CBUUID {
+    public static var alphaService: CBUUID {
         .init(string: "06636aee-bdf4-421e-a9a5-04bbc6320e83")
     }
     static var alphaStatusCharacteristic: CBUUID {
@@ -21,7 +21,7 @@ enum CuroUUIDs {
     }
 
     // stethoscope settings
-    static var stethoscopeService: CBUUID {
+    public static var stethoscopeService: CBUUID {
         .init(string: "cdb074c8-20d1-4408-b923-d4b0d7f91b9c")
     }
     static var stethoscopeStatusCharacteristic: CBUUID {
@@ -54,37 +54,6 @@ public enum CuroAlphaStatus: Int {
     case connected = 2
     case otoscopeOn = 3
     case invalid = 4
-}
-
-public enum CuroAlphaStatusCommand: String {
-    case resetDevice = "$HRST!"
-    case requestDeviceId = "$BLID!"
-    case requestIpAddress = "$IPAD!"
-    case requestSsid = "$SSID!"
-}
-
-extension CuroAlphaStatusCommand {
-    func toData() -> Data {
-        self.rawValue.data(using: .utf8)!
-    }
-}
-
-public enum CuroAlphaModuleCommand: String {
-    case deviceHealth = "$P1!"
-    
-    case readTemperature = "$T1!"
-    
-    case oximeterOff = "$S0!"
-    case oximeterOn = "$S1!"
-    
-    case otoscopeOff = "$V0!"
-    case otoscopeOn = "$V1!"
-}
-
-extension CuroAlphaModuleCommand {
-    func toData() -> Data {
-        self.rawValue.data(using: .utf8)!
-    }
 }
 
 public enum CuroAlphaProvisionStep {

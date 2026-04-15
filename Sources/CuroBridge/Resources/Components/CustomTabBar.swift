@@ -11,16 +11,11 @@ public struct CustomTabBar: View {
     @Binding var selectedTab: Int
     @Namespace private var animation
     
-    var tabItems: [String] = [
-        "Thermometer",
-        "Oximeter",
-        "Blood Pressure monitor",
-        "Otoscope",
-        "Stethoscope"
-    ]
+    var tabItems: [String]
     
-    public init(selectedTab: Binding<Int>) {
+    public init(selectedTab: Binding<Int>, items: [String]) {
         self._selectedTab = selectedTab
+        self.tabItems = items
     }
     
     public var body: some View {
@@ -78,5 +73,5 @@ public struct CustomTabBar: View {
 }
 
 #Preview {
-    CustomTabBar(selectedTab: .constant(0))
+    CustomTabBar(selectedTab: .constant(0), items: ["Home", "Settings"])
 }

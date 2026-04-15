@@ -15,6 +15,6 @@ public struct CuroUser: Codable, Sendable {
     public let birthDate: String?
     public let createdAt: String?
     public let email: String?
-    public let gender: String?
+    public let gender: Int?
     public let profilePic: String?
 }

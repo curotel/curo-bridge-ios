@@ -7,40 +7,10 @@
 
 import Foundation
 
-public enum ModuleError: Error {
-    case temperatureReadingError
-    case oximeterReadingError
-}
-
-extension ModuleError: LocalizedError {
-    public var errorDescription: String? {
-        switch self {
-        case .temperatureReadingError:
-            return "Encountered an error while reading the temperature"
-        case .oximeterReadingError:
-            return "Encountered an error while reading the oximeter"
-        }
-    }
-}
-
-public protocol AlphaModuleManagerDelegate: AnyObject {
-    func onHealth(_ voltage: Double, _ batteryLevel: Double)
-    
-    func onTemperatureReading(_ celsius: Double, _ fahrenheit: Double)
-    func onOximetry(spo2: Double, pulse: Int)
-    func onFingerDetected(detected: Bool)
-    
-    func onError(_ error: ModuleError)
-}
-
 public class AlphaModuleManager {
     public var delegate: AlphaModuleManagerDelegate?
     
     private var fingerDetectionWorkItem: DispatchWorkItem?
-    
-    init(delegate: AlphaModuleManagerDelegate?) {
-        self.delegate = delegate
-    }
     
     private func deliverToMain(_ work: @escaping () -> Void) {
         if Thread.isMainThread {
@@ -60,6 +30,8 @@ public class AlphaModuleManager {
             processFingerDetection(payloadStr)
         } else if payloadStr.starts(with: "V:") {
             processHealth(payloadStr)
+        } else if payloadStr.starts(with: "BP:") {
+            processBp(payloadStr)
         }
     }
     
@@ -121,6 +93,46 @@ public class AlphaModuleManager {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: workItem)
     }
     
+    func processBp(_ payloadString: String) {
+        let cleaned = payloadString
+            .replacingOccurrences(of: "\u{02}", with: "")
+            .replacingOccurrences(of: "\u{03}", with: "")
+            .replacingOccurrences(of: "BP:", with: "")
+        
+        var reading = BPReading()
+        
+        if cleaned.contains("C") && !cleaned.contains("P") {
+            let pressureStr = String(cleaned.prefix(3))
+            reading.livePressure = Int(pressureStr)
+            self.delegate?.onBpReading(reading)
+        }
+
+        let parts = cleaned.split(separator: ";")
+        
+        for part in parts {
+            let str = String(part)
+            
+            if str.hasPrefix("P") {
+                let value = str.dropFirst() // 119081093
+                
+                if value.count >= 6 {
+                    let sys = value.prefix(3)
+                    let dia = value.dropFirst(3).prefix(3)
+                    
+                    reading.systolic = Int(sys)
+                    reading.diastolic = Int(dia)
+                }
+            }
+            
+            if str.hasPrefix("R") {
+                let hr = str.dropFirst()
+                reading.heartRate = Int(hr)
+            }
+        }
+        
+        self.delegate?.onBpReading(reading)
+    }
+    
     func processHealth(_ payloadString: String) {
         var voltage: Double?
         var percentage: Double?
@@ -166,4 +178,39 @@ public class AlphaModuleManager {
             print("Invalid payload:", payloadString)
         }
     }
+}
+
+public enum ModuleError: Error {
+    case temperatureReadingError
+    case oximeterReadingError
+}
+
+extension ModuleError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .temperatureReadingError:
+            return "Encountered an error while reading the temperature"
+        case .oximeterReadingError:
+            return "Encountered an error while reading the oximeter"
+        }
+    }
+}
+
+public protocol AlphaModuleManagerDelegate: AnyObject {
+    func onHealth(_ voltage: Double, _ batteryLevel: Double)
+    
+    func onTemperatureReading(_ celsius: Double, _ fahrenheit: Double)
+    func onOximetry(spo2: Double, pulse: Int)
+    func onFingerDetected(detected: Bool)
+    
+    func onBpReading(_ reading: BPReading)
+    
+    func onError(_ error: ModuleError)
+}
+
+public struct BPReading {
+    public var systolic: Int?
+    public var diastolic: Int?
+    public var heartRate: Int?
+    public var livePressure: Int?
 }

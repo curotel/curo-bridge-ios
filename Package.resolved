@@ -1,5 +1,5 @@
 {
-  "originHash" : "96252c3890bee577442ebbf18c601612435d23be59493df8bd6371524d263b79",
+  "originHash" : "29cd2356b1eee6330acb06a97604f6b0ab37e54d390b05fb9b94a0a4ede36034",
   "pins" : [
     {
       "identity" : "esp-idf-provisioning-ios",
@@ -24,7 +24,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/GetStream/stream-video-swift.git",
       "state" : {
-        "revision" : "787436f257f6d5fe557d44bf2f4ba493d30abfae",
+        "revision" : "cb4838b0a186046b7ebe153d5177959022c87be8",
         "version" : "1.45.0"
       }
     },
@@ -33,8 +33,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/GetStream/stream-video-swift-webrtc.git",
       "state" : {
-        "revision" : "6d45af906f8c91d6bfd01c5f68b76f7d7c90eaa3",
-        "version" : "137.0.71"
+        "revision" : "af8bb8ff4da92953567d777baba55369f998dc01",
+        "version" : "137.0.54"
       }
     },
     {

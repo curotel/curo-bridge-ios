@@ -70,6 +70,6 @@ public enum IconAsset: String, CaseIterable {
 
 public extension IconAsset {
     var image: Image {
-        Image(self.rawValue)
+        Image(self.rawValue, bundle: .module)
     }
 }

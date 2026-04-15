@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-extension Color {
+public extension Color {
     static func theme(_ token: ThemeColor) -> Color {
         token.color
     }

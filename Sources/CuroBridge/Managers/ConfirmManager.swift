@@ -28,6 +28,7 @@ public final class ConfirmManager: ObservableObject {
         onConfirm: @escaping () -> Void,
         onClose: @escaping () -> Void
     ) {
+        print("Showing confirm manager")
         self.title = title
         self.negativeText = negativeText
         self.positiveText = positiveText

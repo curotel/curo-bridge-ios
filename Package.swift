@@ -30,7 +30,6 @@ let package = Package(
                 .product(name: "StreamVideo", package: "stream-video-swift"),
                 .product(name: "StreamVideoSwiftUI", package: "stream-video-swift"),
                 .product(name: "PhoneNumberKit", package: "PhoneNumberKit")
-                
             ]
         ),
     ]

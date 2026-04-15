@@ -15,6 +15,7 @@ public struct FilledButton: View {
     let iconColor: Color
     let width: CGFloat?
     let textSize: CGFloat
+    let textColor: Color
     let action: (() -> Void)?
     
     public init(
@@ -25,6 +26,7 @@ public struct FilledButton: View {
         iconColor: Color = ThemeColor.text.color,
         width: CGFloat? = nil,
         textSize: CGFloat = 16,
+        textColor: Color = ThemeColor.text.color,
         action: (() -> Void)? = nil
     ) {
         self.title = title
@@ -34,6 +36,7 @@ public struct FilledButton: View {
         self.iconColor = iconColor
         self.width = width
         self.textSize = textSize
+        self.textColor = textColor
         self.action = action
     }
     
@@ -60,7 +63,7 @@ public struct FilledButton: View {
                     .foregroundStyle(
                         isSelected
                         ? ThemeColor.white.color
-                        : ThemeColor.black.color
+                        : textColor
                     )
             }
             .frame(maxWidth: width)
