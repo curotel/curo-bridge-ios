@@ -8,7 +8,7 @@
 import SwiftUI
 
 public struct BatteryLevel: View {
-    @Binding var level: Double?
+    @Binding var level: Double
     var iconSize: CGFloat
     var showPercentage: Bool
     
@@ -45,7 +45,7 @@ public struct BatteryLevel: View {
         "\(Int(clampedLevel))%"
     }
     
-    public init(level: Binding<Double?>, iconSize: CGFloat = 20, showPercentage: Bool = false) {
+    public init(level: Binding<Double>, iconSize: CGFloat = 20, showPercentage: Bool = false) {
         self._level = level
         self.iconSize = iconSize
         self.showPercentage = showPercentage

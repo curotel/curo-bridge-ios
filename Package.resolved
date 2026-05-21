@@ -1,5 +1,5 @@
 {
-  "originHash" : "29cd2356b1eee6330acb06a97604f6b0ab37e54d390b05fb9b94a0a4ede36034",
+  "originHash" : "2108f5218018a7c5bbe641152ed6519b4dfaa1d416140022fc76cebf480a51d3",
   "pins" : [
     {
       "identity" : "esp-idf-provisioning-ios",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "ff70c09ded605969e053ade44a6b8756b93c4e4c",
         "version" : "3.0.3"
+      }
+    },
+    {
+      "identity" : "grdb.swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/groue/GRDB.swift",
+      "state" : {
+        "revision" : "36e30a6f1ef10e4194f6af0cff90888526f0c115",
+        "version" : "7.10.0"
       }
     },
     {
@@ -24,8 +33,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/GetStream/stream-video-swift.git",
       "state" : {
-        "revision" : "cb4838b0a186046b7ebe153d5177959022c87be8",
-        "version" : "1.45.0"
+        "revision" : "4be15a9b7cf0c446b7be4438156a776e9023fcef",
+        "version" : "1.46.0"
       }
     },
     {
@@ -33,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/GetStream/stream-video-swift-webrtc.git",
       "state" : {
-        "revision" : "af8bb8ff4da92953567d777baba55369f998dc01",
-        "version" : "137.0.54"
+        "revision" : "6d45af906f8c91d6bfd01c5f68b76f7d7c90eaa3",
+        "version" : "137.0.71"
       }
     },
     {

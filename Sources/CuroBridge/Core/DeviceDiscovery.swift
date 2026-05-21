@@ -62,8 +62,8 @@ public class DeviceDiscovery: NSObject {
         }
     }
     
-    public func startDeviceDiscovery(_ devices: [CuroDevice]?) {
-        let deviceTypes = devices ?? [CuroDevice.alpha, CuroDevice.stethoscope]
+    public func startDeviceDiscovery(_ devices: [CuroDeviceType]?) {
+        let deviceTypes = devices ?? [CuroDeviceType.alpha, CuroDeviceType.stethoscope]
         servicesToScan.removeAll()
         if deviceTypes.contains(where: { deviceType in
             deviceType == .alpha
@@ -385,7 +385,7 @@ extension DeviceDiscovery {
             print("Characteristic \(characteristic.uuid.uuidString) value: \(String(decoding: value, as: UTF8.self)) hex: \(value.toHexString())")
             switch characteristic.uuid {
             case CuroUUIDs.alphaStatusCharacteristic:
-                alphaStatusManager.processPayload(value)
+                alphaStatusManager.processPayload(peripheral: peripheral, payload: value)
             case CuroUUIDs.alphaModuleCharacteristic:
                 alphaModuleManager.processPayload(value)
             default:

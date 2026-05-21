@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum Gender: Int, CaseIterable, Identifiable {
+public enum Gender: Int, Codable, Sendable {
     case invalid = 0
     case male = 1
     case female = 2

@@ -42,12 +42,12 @@ public enum CuroUUIDs {
     }
 }
 
-public enum CuroDevice {
+public enum CuroDeviceType: String, Codable, CaseIterable, Sendable {
     case alpha
     case stethoscope
 }
 
-public enum CuroAlphaStatus: Int {
+public enum CuroAlphaStatus: Int, Equatable {
     case undefined = -1
     case noConfiguration = 0
     case notConnected = 1

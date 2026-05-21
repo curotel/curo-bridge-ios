@@ -22,14 +22,15 @@ public final class APIClient {
     
     public func send<T: APIRequest>(
         _ request: T,
-        isRetry: Bool = false
+        isRetry: Bool = false,
+        logoutIfUnauthorized: Bool = true
     ) async throws -> T.Response {
         
         let urlRequest = try await buildRequest(from: request)
         
         do {
             let (data, response) = try await URLSession.shared.data(for: urlRequest)
-            return try await handleResponse(data: data, response: response)
+            return try await handleResponse(data: data, response: response, logoutIfUnauthorized: logoutIfUnauthorized)
             
         } catch {
             if let networkError = error as? NetworkError,
@@ -50,10 +51,12 @@ public final class APIClient {
                     
                     let (data, response) = try await URLSession.shared.data(for: retryRequest)
                     
-                    return try await handleResponse(data: data, response: response)
+                    return try await handleResponse(data: data, response: response, logoutIfUnauthorized: logoutIfUnauthorized)
                     
                 } catch {
-                    await AuthManager.shared.handleLogout()
+                    if logoutIfUnauthorized {
+                        await AuthManager.shared.handleLogout()
+                    }
                     throw NetworkError.unauthorized
                 }
             }
@@ -109,7 +112,8 @@ public final class APIClient {
     
     private func handleResponse<T: Decodable>(
         data: Data,
-        response: URLResponse
+        response: URLResponse,
+        logoutIfUnauthorized: Bool = true
     ) async throws -> T {
         
         guard let http = response as? HTTPURLResponse else {
@@ -130,7 +134,9 @@ public final class APIClient {
             }
             
         case 401:
-            await AuthManager.shared.handleLogout()
+            if logoutIfUnauthorized {
+                await AuthManager.shared.handleLogout()
+            }
             throw NetworkError.unauthorized
             
         default:

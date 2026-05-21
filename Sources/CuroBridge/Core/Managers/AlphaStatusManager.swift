@@ -20,18 +20,18 @@ public class AlphaStatusManager {
         }
     }
     
-    func processPayload(_ payload: Data) {
+    func processPayload(peripheral: CBPeripheral, payload: Data) {
         let full = String(decoding: payload, as: UTF8.self)
         for lineSubseq in full.split(whereSeparator: \.isNewline) {
             let trimmed = String(lineSubseq).trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { continue }
-            processLine(trimmed)
+            processLine(peripheral: peripheral, line: trimmed)
         }
     }
     
-    private func processLine(_ line: String) {
+    private func processLine(peripheral: CBPeripheral, line: String) {
         if line.starts(with: "STAT:") {
-            processStatus(line)
+            processStatus(peripheral: peripheral, statusString: line)
         } else if line.starts(with: "ID:") {
             processCameraId(line)
         } else if line.starts(with: "IP:") {
@@ -41,13 +41,13 @@ public class AlphaStatusManager {
         }
     }
     
-    func processStatus(_ statusString: String) {
+    func processStatus(peripheral: CBPeripheral, statusString: String) {
         let body = statusString
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "STAT:", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if let statusInt = Int(body), let curoStatus = CuroAlphaStatus(rawValue: statusInt) {
-            self.delegate?.onDeviceStatus(curoStatus)
+            self.delegate?.onDeviceStatus(peripheral: peripheral, status: curoStatus)
         }
     }
     
@@ -74,7 +74,7 @@ public class AlphaStatusManager {
 }
 
 public protocol AlphaStatusManagerDelegate: AnyObject {
-    func onDeviceStatus(_ status: CuroAlphaStatus)
+    func onDeviceStatus(peripheral: CBPeripheral, status: CuroAlphaStatus)
     func onCameraIdReceived(_ espId: String)
     func onIpReceived(_ deviceIp: String)
     func onSSIDReceived(_ ssid: String)

@@ -36,4 +36,8 @@ public final class ConfirmManager: ObservableObject {
         self.onClose = onClose
         self.isPresented = true
     }
+    
+    public func hide () {
+        self.isPresented = false
+    }
 }

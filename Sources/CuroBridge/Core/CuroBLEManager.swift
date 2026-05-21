@@ -10,7 +10,7 @@ import CoreBluetooth
 @MainActor
 public class CuroBLEManager {
     public static var shared: CuroBLEManager = .init()
-    public var connectionMode: DeviceMode = .local
+    public var connectionMode: CuroAlphaConnectionMode = .local
     
     // alpha characteristics
     var alphaStatusCharacteristic: CBCharacteristic?
@@ -45,12 +45,8 @@ public class CuroBLEManager {
         case CuroUUIDs.alphaStatusCharacteristic:
             alphaStatusCharacteristic = characteristic
             enableNotifyForCharacteristic(peripheral: device, characteristic: characteristic)
-            if connectionMode == .local {
-                writeToAlphaStatusCharacteristics(alphaDevice: device, command: .getSSID)
-                writeToAlphaStatusCharacteristics(alphaDevice: device, command: .getESPID)
-            } else if connectionMode == .provisioning {
-                writeToAlphaStatusCharacteristics(alphaDevice: device, command: .getESPID)
-            }
+            writeToAlphaStatusCharacteristics(alphaDevice: device, command: .getSSID)
+            writeToAlphaStatusCharacteristics(alphaDevice: device, command: .getESPID)
         case CuroUUIDs.alphaModuleCharacteristic:
             self.alphaModuleCharacteristic = characteristic
             enableNotifyForCharacteristic(peripheral: device, characteristic: characteristic)
@@ -137,7 +133,7 @@ public extension CuroBLEManager {
             }
             switch characteristic.uuid {
             case CuroUUIDs.alphaStatusCharacteristic:
-                alphaStatusManager.processPayload(value)
+                alphaStatusManager.processPayload(peripheral: device, payload: value)
             case CuroUUIDs.alphaModuleCharacteristic:
                 alphaModuleManager.processPayload(value)
             case CuroUUIDs.stethoscopeVitalsCharacteristic:
@@ -218,7 +214,7 @@ public extension CuroBLEManager {
     }
     
     func changeLedIntensity(alphaDevice: CBPeripheral, intensity: Double) {
-        guard let characteristic = alphaModuleCharacteristic else { return }
+        guard let characteristic = alphaStatusCharacteristic else { return }
         
         let value = max(0, min(100, Int(intensity.rounded())))
         let padded = String(format: "%03d", value)

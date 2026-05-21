@@ -18,7 +18,6 @@ public struct Snackbar: Equatable {
 }
 
 public struct SnackbarView: View {
-    
     var message: String
     
     public init(message: String) {
@@ -28,14 +27,14 @@ public struct SnackbarView: View {
     public var body: some View {
         HStack(alignment: .center, content: {
             Text(message)
-                .appFont(.semibold, size: 14)
-                .appColor(.text)
+                .appFont(.bold, size: 14)
+                .appColor(.white)
             
             Spacer()
         })
         .padding()
         .frame(width: maxWidth)
-        .background(ThemeColor.accent.color)
+        .background(ThemeColor.blue.color)
         .cornerRadius(8)
         .padding(.horizontal, 16)
     }

@@ -10,8 +10,6 @@ import Foundation
 public class AlphaModuleManager {
     public var delegate: AlphaModuleManagerDelegate?
     
-    private var fingerDetectionWorkItem: DispatchWorkItem?
-    
     private func deliverToMain(_ work: @escaping () -> Void) {
         if Thread.isMainThread {
             work()
@@ -81,16 +79,7 @@ public class AlphaModuleManager {
         guard components.count == 2 else { return }
         
         let detected = components[1] == "1"
-        
-        fingerDetectionWorkItem?.cancel()
-        
-        let workItem = DispatchWorkItem { [weak self] in
-            self?.delegate?.onFingerDetected(detected: detected)
-        }
-        
-        fingerDetectionWorkItem = workItem
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1, execute: workItem)
+        self.delegate?.onFingerDetected(detected: detected)
     }
     
     func processBp(_ payloadString: String) {
@@ -119,15 +108,21 @@ public class AlphaModuleManager {
                     let sys = value.prefix(3)
                     let dia = value.dropFirst(3).prefix(3)
                     
-                    reading.systolic = Int(sys)
-                    reading.diastolic = Int(dia)
+                    if let systolic = Int(sys) {
+                        reading.systolic = systolic
+                    }
+                    if let diastolic = Int(dia) {
+                        reading.diastolic = diastolic
+                    }
                 }
             }
             
             if str.hasPrefix("R") {
-                let hr = str.dropFirst()
-                reading.heartRate = Int(hr)
+                if let hr = Int(str.dropFirst()) {
+                    reading.heartRate = hr
+                }
             }
+            
         }
         
         self.delegate?.onBpReading(reading)
@@ -206,11 +201,4 @@ public protocol AlphaModuleManagerDelegate: AnyObject {
     func onBpReading(_ reading: BPReading)
     
     func onError(_ error: ModuleError)
-}
-
-public struct BPReading {
-    public var systolic: Int?
-    public var diastolic: Int?
-    public var heartRate: Int?
-    public var livePressure: Int?
 }

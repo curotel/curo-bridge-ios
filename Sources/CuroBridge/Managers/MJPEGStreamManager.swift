@@ -19,6 +19,8 @@ public final class MJPEGStreamManager: NSObject, ObservableObject {
     private var buffer = Data()
     private var session: URLSession!
     private var dataTask: URLSessionDataTask?
+    
+    public var delegate: MJPEGStreamManagerDelegate?
 
     private override init() {
         super.init()
@@ -92,6 +94,7 @@ public final class MJPEGStreamManager: NSObject, ObservableObject {
 
             if let img = UIImage(data: frameData) {
                 self.image = img
+                self.delegate?.onImageReceived(frameData)
                 self.isLoading = false
             }
         }
@@ -112,4 +115,8 @@ extension MJPEGStreamManager: URLSessionDataDelegate {
             extractFrames()
         }
     }
+}
+
+public protocol MJPEGStreamManagerDelegate {
+    func onImageReceived(_ data: Data)
 }

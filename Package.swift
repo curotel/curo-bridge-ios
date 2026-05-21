@@ -17,8 +17,9 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/espressif/esp-idf-provisioning-ios.git", from: "3.0.3"),
-        .package(url: "https://github.com/GetStream/stream-video-swift.git", from: "1.45.0"),
-        .package(url: "https://github.com/marmelroy/PhoneNumberKit", from: "4.2.8")
+        .package(url: "https://github.com/GetStream/stream-video-swift.git", from: "1.46.0"),
+        .package(url: "https://github.com/marmelroy/PhoneNumberKit", from: "4.2.8"),
+        .package(url: "https://github.com/groue/GRDB.swift", from: "7.10.0")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -29,7 +30,8 @@ let package = Package(
                 .product(name: "ESPProvision", package: "esp-idf-provisioning-ios"),
                 .product(name: "StreamVideo", package: "stream-video-swift"),
                 .product(name: "StreamVideoSwiftUI", package: "stream-video-swift"),
-                .product(name: "PhoneNumberKit", package: "PhoneNumberKit")
+                .product(name: "PhoneNumberKit", package: "PhoneNumberKit"),
+                .product(name: "GRDB", package: "GRDB.swift")
             ]
         ),
     ]

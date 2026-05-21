@@ -57,6 +57,12 @@ public final class CuroProvisioningManager {
         }
     }
     
+    public func continueProvisioning() {
+        if let espIdToConnect = espIdToConnect {
+            self.startProvisioning(espIdToConnect)
+        }
+    }
+    
     func connectToAlpha(_ espDevice: ESPDevice) {
         print("connectToAlpha", espDevice)
         espDevice.connect(delegate: self) { sessionStatus in
@@ -177,9 +183,7 @@ extension CuroProvisioningManager: ESPDeviceConnectionDelegate {
     public func getProofOfPossesion(forDevice: ESPDevice, completionHandler: @escaping (String) -> Void) {
         if let espDeviceId = self.espIdToConnect, espDeviceId.count > 6 {
             let pop = String(espDeviceId.suffix(6))
-            print("getProofOfPossesion", pop)
-//            completionHandler("P\(pop)")
-            completionHandler("abcd1234")
+            completionHandler("P\(pop)")
         } else {
             completionHandler("abcd1234")
         }

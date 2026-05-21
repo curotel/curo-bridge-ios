@@ -39,7 +39,7 @@ public struct StepProgressBar: View {
             }
             .frame(height: 6)
             
-            Text("Step \(currentStep) of \(totalSteps)")
+            Text("Step \(currentStep + 1) of \(totalSteps)")
                 .font(.custom(AppFont.semibold.rawValue, size: 14))
                 .foregroundStyle(ThemeColor.text.color)
         }
