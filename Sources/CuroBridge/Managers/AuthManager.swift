@@ -51,7 +51,8 @@ public final class AuthManager {
         await TokenStore.shared.setTokens(
             access: access,
             refresh: refresh,
-            stream: stream
+            stream: stream,
+            user: user
         )
         
         delegate?.tokenResponseSaved(user: user, isLoggedIn: true)

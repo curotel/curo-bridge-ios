@@ -25,22 +25,45 @@ public final class VideoSDKManager: ObservableObject {
         return UserToken(rawValue: response.streamToken)
     }
     
-    public func getStreamVideoClient() throws -> StreamVideo {
+    public func getStreamVideoClient() async throws -> StreamVideo {
         guard let streamVideoClient = streamVideoClient else { throw NSError(domain: "No stream video client", code: 0, userInfo: nil) }
         
         return streamVideoClient
     }
     
     public func getCallViewModel() -> CallViewModel {
-        if callViewModel == nil {
-            print("Call view model is nil. Starting a new one.")
-            callViewModel = CallViewModel()
+        if let callViewModel {
+            return callViewModel
         }
-        return callViewModel!
+        guard streamVideoClient != nil else {
+            fatalError("Stream Video client not configured. Call setupGetstreamVideoClient first.")
+        }
+        let viewModel = CallViewModel()
+        callViewModel = viewModel
+        return viewModel
+    }
+    
+    /// Restores the Stream client from keychain credentials so CallKit can handle VoIP pushes on cold start.
+    @discardableResult
+    public func restoreSessionForIncomingCalls() async -> Bool {
+        guard streamVideoClient == nil else { return true }
+        guard
+            let streamToken = await TokenStore.shared.getStreamToken(),
+            let curoUser = await TokenStore.shared.getUser()
+        else {
+            return false
+        }
+        await configureStreamVideoClient(curoUser: curoUser, streamToken: streamToken)
+        return streamVideoClient != nil
     }
     
     public func setupGetstreamVideoClient(curoUser: CuroUser) async {
+        guard streamVideoClient == nil else { return }
         guard let streamToken = await TokenStore.shared.getStreamToken() else { return }
+        await configureStreamVideoClient(curoUser: curoUser, streamToken: streamToken)
+    }
+    
+    private func configureStreamVideoClient(curoUser: CuroUser, streamToken: String) async {
         
         let newVideoClient = StreamVideo(
             apiKey: apiKey,
@@ -68,7 +91,8 @@ public final class VideoSDKManager: ObservableObject {
             },
         )
         self.streamVideoClient = newVideoClient
-        
+        self.callViewModel = CallViewModel()
+
         Task {
             for await clientEvent in newVideoClient.subscribe() {
                 switch clientEvent {
@@ -81,7 +105,6 @@ public final class VideoSDKManager: ObservableObject {
                 }
             }
         }
-        self.callViewModel = .init()
     }
     
     public func startCalling(callType: String, callId: String, remoteUser: User) {
@@ -98,6 +121,12 @@ public final class VideoSDKManager: ObservableObject {
         Task {
             try await getCallViewModel().call?.end()
         }
+    }
+    
+    public func resetSession() {
+        streamVideoClient = nil
+        callViewModel = nil
+        isSDKReady = false
     }
 }
 
